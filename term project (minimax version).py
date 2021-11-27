@@ -82,6 +82,7 @@ class Board(object):
         #player and piece
         self.selectedPiece = None
         self.currentPlayer = 'white'
+        self.selectedPiecePosition = None
 
         #num of moves
         self.wMoves = 0
@@ -105,11 +106,8 @@ class Board(object):
         if ((row + col)%2 == 0):
             fillColor = 'maroon'
         else:
-<<<<<<< Updated upstream
-            fillColor = 'grey'
-=======
             fillColor = 'tan'
->>>>>>> Stashed changes
+
         if self.selectedPiece != None:
             if ((row == self.selectedPiece.location[0]) and 
                 (col == self.selectedPiece.location[1])):
@@ -698,9 +696,10 @@ class Piece(object):
         #add offset so piece is displayed properly
         startX += self.offset
         startY += self.offset
-        '''if app.selectedPiece == self:
-            imgAnchor = NE
-        else:'''
+        if app.board.selectedPiece == self:
+            if app.board.selectedPiecePosition != None:
+                startX = app.board.selectedPiecePosition[0]
+                startY = app.board.selectedPiecePosition[1]
         imgAnchor = CENTER
         canvas.create_image(startX, startY, 
                 image = ImageTk.PhotoImage(self.image), anchor = imgAnchor)
@@ -939,6 +938,18 @@ class King(Piece):
 
     def draw(self, app, canvas):
         super().__draw__(app, canvas)
+
+def mouseMoved(app, event):
+    if app.board.selectedPiece == None:
+        app.board.selectedPiecePosition = None
+    else:
+        app.board.selectedPiecePosition = (event.x, event.y)
+
+def mouseDragged(app, event):
+    if app.board.selectedPiece == None:
+        app.board.selectedPiecePosition = None
+    else:
+        app.board.selectedPiecePosition = (event.x, event.y)
 
 def mousePressed(app, event):
     position = fromXYToRowCol(event.x, event.y, app)
