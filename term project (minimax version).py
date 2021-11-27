@@ -1,5 +1,5 @@
 #################################################
-# term project.py: version of code that supports multiple boards
+# chess_tp_minimax.py: version of code that supports multiple boards
 # Your name: Kavya Iyer
 # Your andrew id: kavyai
 
