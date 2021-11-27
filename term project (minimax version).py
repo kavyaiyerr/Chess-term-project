@@ -12,7 +12,7 @@ def appStarted(app): #initialize variables
     app.rows, app.cols = 8, 8
     #store piece locations
     app.board = Board(app)
-    app.margin = 20
+    app.margin = 60
     app.validSelectedPiece = True
     app.validMove = True
     app.miniMax = False
@@ -22,8 +22,8 @@ def appStarted(app): #initialize variables
 class Board(object):
     def __init__(self, app):
         self.moves = [0, 0]
-        self.cellWidth = 100
-        self.cellHeight = 100
+        self.cellWidth = 80
+        self.cellHeight = 80
         self.rows = app.rows
         self.cols = app.cols
         self.board = [[None] * self.cols for i in range (0, self.rows)] 
@@ -76,8 +76,8 @@ class Board(object):
         self.gameOver = False
 
         #pieces conquered
-        self.bConq = 0
-        self.wConq = 0
+        self.bConq = dict()
+        self.wConq = dict()
 
         #player and piece
         self.selectedPiece = None
@@ -635,11 +635,17 @@ class Piece(object):
         #figure out conquered piece
         conqPiece = board.board[newPos[0]][newPos[1]]
         if (conqPiece != None):
-            #update counts
+            #update counts for each piece type
             if (conqPiece.color == 'white'):
-                board.bConq += 1
+                if conqPiece.name not in board.bConq:
+                    board.bConq[conqPiece.name] = 1
+                else:
+                    board.bConq[conqPiece.name] += 1
             else:
-                board.wConq += 1
+                if conqPiece.name not in board.wConq:
+                    board.wConq[conqPiece.name] = 1
+                else:
+                    board.wConq[conqPiece.name] += 1
             #if it's a king, game over
             if (isinstance(conqPiece, King) == True):
                 board.gameOver = True
@@ -998,27 +1004,27 @@ def redrawAll(app, canvas): #visuals
                     str(app.board.bConq)
         wString = "White: " + "Moves = "+ str(app.board.wMoves) + ' Conq = ' + \
                     str(app.board.wConq)
-        canvas.create_text(app.margin, app.height/84, text = bString, 
+        canvas.create_text(app.margin, app.height/76 + 20, text = bString, 
                             anchor = W, font = ('Pursia', 12, 
                         'bold italic'), fill = 'black') 
-        canvas.create_text(app.width-app.margin, app.height/84, text = wString, 
-                            anchor = E, font = ('Pursia', 12, 
+        canvas.create_text(app.margin, app.height/76 + 40, 
+            text = wString, anchor = W, font = ('Pursia', 12, 
                         'bold italic'), fill = 'black')
-        canvas.create_text(app.width//2, app.height - app.margin + 10, 
+        canvas.create_text(app.width//2, app.height - app.margin + 30, 
         text = 'Press space bar to exit.', 
                 font = ('Pursia', 12, 'bold italic'), fill = 'black')    
         if app.board.checkmate == True:
-            canvas.create_text(app.width//2, app.height/84, 
+            canvas.create_text(app.width//2, app.height/76, 
             text = 'Checkmate: Game Over!', font = ('Pursia', 12, 
                         'bold italic'), 
             fill = 'black')
         elif app.board.check == True and app.board.gameOver == False:
-            canvas.create_text(app.width//2, app.height/84, 
+            canvas.create_text(app.width//2, app.height/76, 
             text = 'Check!', font = ('Pursia', 12, 
                         'bold italic'), 
             fill = 'black')
         elif app.board.gameOver == True:
-            canvas.create_text(app.width//2, app.height/84, 
+            canvas.create_text(app.width//2, app.height/76, 
             text = 'Game Over!', font = ('Pursia', 12, 
                         'bold italic'), 
             fill = 'black')
@@ -1046,7 +1052,7 @@ def keyPressed(app, event):
             appStarted(app)
 
 def playChess(): #start game
-    runApp(width = 840, height = 840)
+    runApp(width = 760, height = 760)
 
 def main():
     cs112_f21_week10_linter.lint()
