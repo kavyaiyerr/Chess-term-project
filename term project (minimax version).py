@@ -97,13 +97,19 @@ class Board(object):
                     #if there is a piece in that cell, ask piece to draw itself
                     if (self.board[row][col] != None):
                         self.board[row][col].draw(app, canvas)
+            if app.board.selectedPiece!= None:
+                app.board.selectedPiece.draw(app, canvas)
 
     def drawCell(self, app, canvas, row, col): #drawing one cell
         (startX, startY) = fromRowColToXY(row, col, app)
         if ((row + col)%2 == 0):
-            fillColor = 'white'
+            fillColor = 'maroon'
         else:
+<<<<<<< Updated upstream
             fillColor = 'grey'
+=======
+            fillColor = 'tan'
+>>>>>>> Stashed changes
         if self.selectedPiece != None:
             if ((row == self.selectedPiece.location[0]) and 
                 (col == self.selectedPiece.location[1])):
