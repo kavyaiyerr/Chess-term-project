@@ -11,7 +11,14 @@ HOW TO RUN THE PROJECT:
 To run the project, open "term project (minimax version).py" in your editor.
 
 LIBRARIES NEEDED:
-pip, pillow, cmu_112_graphics, copy, random
+pip, Pillow, cmu_112_graphics, copy, random
+
+For Windows and Mac:
+To install pip and Pillow, open a terminal window and type the following 
+commands (make sure python3 is available in your path)
+
+python3 -m pip install --upgrade pip
+python 3 -m pip install --upgrade Pillow
 
 SHORTCUT COMMANDS; 
 None

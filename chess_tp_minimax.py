@@ -145,6 +145,9 @@ def fromRowColToXY(row, col, app): #translate row/col to x/y pixel coords
     return X, Y
 
 def fromXYToRowCol(X, Y, app): #translate x/y pixel coords to row/col
+    if ((X < app.margin) or (Y < app.margin) or (X > app.width-app.margin)
+        or (Y > app.height-app.margin)):
+        return None
     col = (X-app.margin)//app.board.cellWidth
     row = (Y-app.margin)//app.board.cellWidth
     return row, col
@@ -520,7 +523,6 @@ def getPieceToMove(board, color):
                                 newPos = (i, j)
                                 if (piece.isMoveValid(board, newPos) == True):
                                     return (piece.location, newPos)
-    print("couldn't move :( ")
 
 def evaluatePosition(board):
     score = 0
@@ -534,6 +536,105 @@ def evaluatePosition(board):
                 score += (getPieceValues(piece, piece.color) \
                             + selectedTable[i][j])
     return score
+
+def tryCastling(app):
+    if app.board.check == True:
+        return False
+    if app.board.currentPlayer == 'white':
+        row = app.board.wKingPos[0]
+        col = app.board.wKingPos[1]
+    else:
+        row = app.board.bKingPos[0]
+        col = app.board.bKingPos[1]
+    kingPiece = app.board.board[row][col]
+    
+    if kingPiece.isCastlingPossible == False:
+        return False
+
+    rookOne = app.board.board[row][0]
+    rookTwo = app.board.board[row][7]
+
+    if (rookOne == None and rookTwo == None):
+        return False
+
+    if (rookOne != None and rookTwo != None):
+        if (rookOne.isCastlingPossible == False and 
+                    rookTwo.isCastlingPossible == False):
+            return False
+
+    #know that king and at least one of the rooks can castle
+    rookOnePossible = None
+    rookTwoPossible = None
+
+    if rookOne != None:
+        rookOnePossible = rookOne.isCastlingPossible
+        if (rookOne.name != 'Rook' or rookOne.color != app.board.currentPlayer):
+            return False
+        if rookOne.isCastlingPossible == True: #queens side
+            for i in range (1, 4): #check clear path
+                if app.board.board[row][i] != None:
+                    rookOnePossible = False
+                    break
+            for line in app.board.board: #check if clear path under attack
+                for piece in line:
+                    if not piece:
+                        continue
+                    if piece.color == app.board.currentPlayer:
+                        continue
+                    legalMoves = piece.getLegalMoves(app.board)
+                    if not legalMoves: continue
+                    for move in legalMoves:
+                        if not move:
+                            continue
+                        if (move[1] == (row, 1) or move[1] == (row, 2) 
+                                or move[1] == (row, 3)):
+                                rookOnePossible = False
+                                break
+    
+    if rookTwo != None:
+        rookTwoPossible = rookTwo.isCastlingPossible
+        if (rookTwo.name != 'Rook' or rookTwo.color != app.board.currentPlayer):
+            return False
+        if rookTwo.isCastlingPossible == True: #kings side
+            for i in range (5, 7): #check clear path
+                if app.board.board[row][i] != None:
+                    rookTwoPossible = False
+                    break
+            for line in app.board.board: #check if clear path under attack
+                for piece in line:
+                    if not piece: 
+                        continue
+                    if piece.color == app.board.currentPlayer:
+                        continue
+                    legalMoves = piece.getLegalMoves(app.board)
+                    if not legalMoves: continue
+                    for move in legalMoves:
+                        if not move:
+                            continue
+                        if (move[1] == (row, 5) or move[1] == (row, 6)):
+                                rookTwoPossible = False
+                                break
+
+    if rookOnePossible == False and rookTwoPossible == False:
+        #no clear path
+        return False
+    
+    if rookOnePossible == True:
+        newPos = list(kingPiece.location)
+        newPos[1] = 1 #new king position
+        kingPiece.moveTo(app.board, tuple(newPos), True)
+        newPos[1] = 2 #new rook position
+        rookOne.moveTo(app.board, tuple(newPos), True)
+        return True
+
+    if rookTwoPossible == True:
+        newPos = list(kingPiece.location)
+        newPos[1] = 6 #new king position
+        kingPiece.moveTo(app.board, tuple(newPos), True)
+        newPos[1] = 5 #new rook position
+        rookTwo.moveTo(app.board, tuple(newPos), True)
+        return True
+    
 
 #########################
 #MINIMAX
@@ -622,9 +723,10 @@ class Piece(object):
        #offset of 40 pixels for images
        self.offset = 40
     
-    def moveTo(self, board, newPos):
-        if self.isMoveValid(board, newPos) == False:
-            return False
+    def moveTo(self, board, newPos, castling = False):
+        if castling == False:
+            if self.isMoveValid(board, newPos) == False:
+                return False
         #make the move
         board.board[self.location[0]][self.location[1]] = None
         position = list(self.location)
@@ -662,6 +764,10 @@ class Piece(object):
 
         #update board
         board.board[newPos[0]][newPos[1]] = self
+
+        if(isinstance(self, King) == True or isinstance(self, Rook) == True):
+            #means rook/king being moved, piece no longer eligible for castling
+            self.isCastlingPossible = False
 
         #keep track of king's position
         if(isinstance(self, King) == True):
@@ -860,6 +966,7 @@ class Rook(Piece):
     def __init__(self, app, pos, color):
         super().__init__(app, pos, color)
         self.name = 'Rook'
+        self.isCastlingPossible = True
         if (self.color == 'white'):
             self.image = app.loadImage('wRook.png')
         else:
@@ -905,6 +1012,7 @@ class King(Piece):
     def __init__(self, app, pos, color):
         super().__init__(app, pos, color)
         self.name = 'King'
+        self.isCastlingPossible = True
         if (self.color == 'white'):
             self.image = app.loadImage('wKing.png')
         else:
@@ -1012,7 +1120,10 @@ def redrawAll(app, canvas): #visuals
                         'bold italic'), fill = 'black')
         canvas.create_text(app.width//2, app.height - app.margin + 30, 
         text = 'Press space bar to exit.', 
-                font = ('Pursia', 12, 'bold italic'), fill = 'black')    
+                font = ('Pursia', 12, 'bold italic'), fill = 'black') 
+        canvas.create_text(app.width//2, app.height - app.margin + 15, 
+        text = "Press 'c' to castle.", 
+                font = ('Pursia', 12, 'bold italic'), fill = 'black')   
         if app.board.checkmate == True:
             canvas.create_text(app.width//2, app.height/76, 
             text = 'Checkmate: Game Over!', font = ('Pursia', 12, 
@@ -1050,6 +1161,30 @@ def keyPressed(app, event):
         if (event.key == 'Space'):
             app.inputNeeded = True
             appStarted(app)
+        else:
+            if (event.key == 'c' or event.key == 'C'):
+                if tryCastling(app) == True:
+                    app.board.selectedPiece = None
+                    app.board.legalMoves = []
+                    if app.board.currentPlayer == 'white':
+                        app.board.wMoves += 1
+                        if (app.bot):
+                            #simple AI move
+                            makeBotMove(app.board)
+                            app.board.bMoves += 1
+                        elif (app.miniMax): #miniMax move
+                            makeBotMoveMiniMax(app.board)
+                            app.board.bMoves += 1
+                        else:
+                            #manual move
+                            app.board.currentPlayer = 'black'
+                    else: #only if black is not a bot
+                        if (app.bot == False and app.miniMax == False):
+                            app.board.bMoves += 1
+                            app.board.currentPlayer = 'white'
+
+                else: #todo add error message
+                    print ('Castling failed')
 
 def playChess(): #start game
     runApp(width = 760, height = 760)
