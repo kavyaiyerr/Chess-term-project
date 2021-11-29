@@ -3,9 +3,11 @@
 # Your name: Kavya Iyer
 # Your andrew id: kavyai
 
-import math, copy, random, sys
+import copy, random
 import cs112_f21_week10_linter
 from cmu_112_graphics import *
+from tkinter import *
+from tkinter.font import Font
 
 def appStarted(app): #initialize variables
     app.size = 0
@@ -18,6 +20,10 @@ def appStarted(app): #initialize variables
     app.miniMax = False
     app.bot = False
     app.inputNeeded = True
+    #image found at https://www.pngkey.com/maxpic/u2w7q8o0r5r5r5r5/
+    app.startImage = app.loadImage('chessPieces.png')
+    #image found at https://tpng.net/download/8326
+    app.startFrame = app.loadImage('medievalFrame.png')
 
 class Board(object):
     def __init__(self, app):
@@ -1140,8 +1146,8 @@ def redrawAll(app, canvas): #visuals
                     str(app.board.wConq)
         #progress display
         canvas.create_text(app.margin, app.height/76 + 20, text = bString, 
-                            anchor = W, font = ('Pursia', 12, 
-                        'bold italic'), fill = 'black') 
+                            anchor = W, font = ('Pursia', 12, 'bold italic'), 
+                            fill = 'black') 
         canvas.create_text(app.margin, app.height/76 + 40, 
             text = wString, anchor = W, font = ('Pursia', 12, 
                         'bold italic'), fill = 'black')
@@ -1183,10 +1189,27 @@ def redrawAll(app, canvas): #visuals
                 fill = 'black')
 
 def startScreen_redrawAll(app, canvas):
-    canvas.create_text(app.width//2, app.height//2, 
-            text = 'WELCOME TO CHECKMATE! \n Press 1 to play against simple'
-             + ' AI, \n press 2 to play 2 player mode, \npress 3 to play'
-             + ' against the Minimax computer',
+    canvas.create_rectangle(0, 0, app.width, app.height, fill = 'tan')
+    canvas.create_image(app.width//2, app.height//2.9, 
+                image = ImageTk.PhotoImage(app.scaleImage(app.startImage, 
+                1/4.5)))
+    canvas.create_image(app.width//2, app.height//2, 
+                image = ImageTk.PhotoImage(app.scaleImage(app.startFrame, 
+                1.25)))
+    
+    textFont1 = Font(family = 'Castletown', size = 30, weight = 'bold', 
+                slant = 'roman', underline = 1, overstrike = 0)
+    canvas.create_text(app.width//2, app.height//2 - 20, 
+            text = 'WELCOME TO CHECKMATE!',
+            font = textFont1, fill = 'maroon')
+    canvas.create_text(app.width//2, app.height//2+20, 
+            text = 'Press 1 to play against simple AI', 
+            font = ('Pursia', 30, 'bold italic'), fill = 'black')
+    canvas.create_text(app.width//2, app.height//2 + 50, 
+            text = 'Press 2 to play two-player mode',
+            font = ('Pursia', 30, 'bold italic'), fill = 'black')
+    canvas.create_text(app.width//2, app.height//2 + 80, 
+            text = 'Press 3 to play against smart AI',
             font = ('Pursia', 30, 'bold italic'), fill = 'black')
 
 def keyPressed(app, event):
@@ -1226,7 +1249,7 @@ def keyPressed(app, event):
                             app.board.bMoves += 1
                             app.board.currentPlayer = 'white'
 
-                else: #todo add error message
+                else: 
                     app.board.castlingValid = False
 
 def playChess(): #start game
