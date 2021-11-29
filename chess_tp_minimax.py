@@ -75,6 +75,12 @@ class Board(object):
         self.checkmate = False
         self.gameOver = False
 
+        #for check
+        self.onlyKingMoves = False
+
+        #forcastling
+        self.castlingValid = None
+
         #pieces conquered
         self.bConq = dict()
         self.wConq = dict()
@@ -833,6 +839,9 @@ class Pawn(Piece):
     def isMoveValid(self, board, newPos):
         if (super().__isMoveValid__(board, newPos) == False):
             return False
+        #only King can move when in check 
+        if board.check == True:
+            return False
         #pawn can't capture directly in same column
         if (newPos[1] == self.location[1]):
             if (board.board[newPos[0]][newPos[1]] != None):
@@ -911,6 +920,9 @@ class Bishop(Piece):
     def isMoveValid(self, board, newPos):
         if (super().__isMoveValid__(board, newPos) == False):
             return False
+        #only King can move when in check 
+        if board.check == True:
+            return False
         return isBishopMoveValid(self, board, newPos)
     
     def getLegalMoves(self, board):
@@ -930,6 +942,9 @@ class Knight(Piece):
 
     def isMoveValid(self, board, newPos):
         if (super().__isMoveValid__(board, newPos) == False):
+            return False
+        #only King can move when in check 
+        if board.check == True:
             return False
         validDirs = [(2,1), (1,2), (-2,1), (1, -2), (2, -1), (-1, 2), (-1, -2),\
             (-2,-1)]
@@ -975,6 +990,9 @@ class Rook(Piece):
     def isMoveValid(self, board, newPos):
         if (super().__isMoveValid__(board, newPos) == False):
             return False
+        #only King can move when in check 
+        if board.check == True:
+            return False
         return isRookMoveValid(self, board, newPos)
 
     def getLegalMoves(self, board):
@@ -994,6 +1012,9 @@ class Queen(Piece):
     
     def isMoveValid(self, board, newPos):
         if (super().__isMoveValid__(board, newPos) == False):
+            return False
+        #only King can move when in check 
+        if board.check == True:
             return False
         if ((isBishopMoveValid(self, board, newPos) == False) and 
         (isRookMoveValid(self, board, newPos) == False)):
@@ -1079,6 +1100,11 @@ def mousePressed(app, event):
                                     app.board.currentPlayer):
             app.board.selectedPiece = selectedPiece
             app.board.legalMoves = selectedPiece.getLegalMoves(app.board)
+            app.board.castlingValid = None
+        if (app.board.check == True and app.board.selectedPiece.name != 'King'):
+            app.board.onlyKingMoves = True
+        else:
+            app.board.onlyKingMoves = False
     elif (app.board.selectedPiece.location == position): #unselect a piece
         app.board.selectedPiece = None
     else:
@@ -1112,6 +1138,7 @@ def redrawAll(app, canvas): #visuals
                     str(app.board.bConq)
         wString = "White: " + "Moves = "+ str(app.board.wMoves) + ' Conq = ' + \
                     str(app.board.wConq)
+        #progress display
         canvas.create_text(app.margin, app.height/76 + 20, text = bString, 
                             anchor = W, font = ('Pursia', 12, 
                         'bold italic'), fill = 'black') 
@@ -1119,26 +1146,41 @@ def redrawAll(app, canvas): #visuals
             text = wString, anchor = W, font = ('Pursia', 12, 
                         'bold italic'), fill = 'black')
         canvas.create_text(app.width//2, app.height - app.margin + 30, 
+        #keyboard instructions
         text = 'Press space bar to exit.', 
                 font = ('Pursia', 12, 'bold italic'), fill = 'black') 
         canvas.create_text(app.width//2, app.height - app.margin + 15, 
         text = "Press 'c' to castle.", 
-                font = ('Pursia', 12, 'bold italic'), fill = 'black')   
+                font = ('Pursia', 12, 'bold italic'), fill = 'black')  
+        #check error message
+        if app.board.onlyKingMoves == True:
+            canvas.create_rectangle(app.margin+20, app.height//2-20, 
+               app.width-app.margin-20, app.height//2 + 20, fill = 'black')
+            canvas.create_text(app.width//2, app.height/2, 
+            text = 'INVALID MOVE: In check, only King can move.', 
+                    font = ('Pursia', 26, 'bold italic'), fill = 'white')
+        #castling error message
+        if app.board.castlingValid == False:
+            canvas.create_rectangle(app.margin+20, app.height//2-20, 
+               app.width-app.margin-20, app.height//2 + 20, fill = 'black')
+            canvas.create_text(app.width//2, app.height/2, 
+            text = 'INVALID MOVE: Conditions for castling not met.', 
+                font = ('Pursia', 26, 'bold italic'), fill = 'white')
+        #checkmate message
         if app.board.checkmate == True:
             canvas.create_text(app.width//2, app.height/76, 
             text = 'Checkmate: Game Over!', font = ('Pursia', 12, 
-                        'bold italic'), 
-            fill = 'black')
+                        'bold italic'), fill = 'black')
+        #check message
         elif app.board.check == True and app.board.gameOver == False:
             canvas.create_text(app.width//2, app.height/76, 
-            text = 'Check!', font = ('Pursia', 12, 
-                        'bold italic'), 
-            fill = 'black')
+            text = 'Check!', font = ('Pursia', 12, 'bold italic'), 
+                    fill = 'black')
+        #message for other ways of ending game (not checkmate)
         elif app.board.gameOver == True:
             canvas.create_text(app.width//2, app.height/76, 
-            text = 'Game Over!', font = ('Pursia', 12, 
-                        'bold italic'), 
-            fill = 'black')
+            text = 'Game Over!', font = ('Pursia', 12, 'bold italic'), 
+                fill = 'black')
 
 def startScreen_redrawAll(app, canvas):
     canvas.create_text(app.width//2, app.height//2, 
@@ -1164,6 +1206,7 @@ def keyPressed(app, event):
         else:
             if (event.key == 'c' or event.key == 'C'):
                 if tryCastling(app) == True:
+                    app.board.castlingValid = True
                     app.board.selectedPiece = None
                     app.board.legalMoves = []
                     if app.board.currentPlayer == 'white':
@@ -1184,7 +1227,7 @@ def keyPressed(app, event):
                             app.board.currentPlayer = 'white'
 
                 else: #todo add error message
-                    print ('Castling failed')
+                    app.board.castlingValid = False
 
 def playChess(): #start game
     runApp(width = 760, height = 760)
