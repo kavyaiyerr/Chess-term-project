@@ -80,6 +80,7 @@ class Board(object):
         self.check = False
         self.checkmate = False
         self.gameOver = False
+        self.resign = False
 
         #for check
         self.onlyKingMoves = False
@@ -1151,9 +1152,12 @@ def redrawAll(app, canvas): #visuals
         canvas.create_text(app.margin, app.height/76 + 40, 
             text = wString, anchor = W, font = ('Pursia', 12, 
                         'bold italic'), fill = 'black')
-        canvas.create_text(app.width//2, app.height - app.margin + 30, 
         #keyboard instructions
+        canvas.create_text(app.width//2, app.height - app.margin + 45, 
         text = 'Press space bar to exit.', 
+                font = ('Pursia', 12, 'bold italic'), fill = 'black') 
+        canvas.create_text(app.width//2, app.height - app.margin + 30, 
+        text = "Press 'r' to resign.", 
                 font = ('Pursia', 12, 'bold italic'), fill = 'black') 
         canvas.create_text(app.width//2, app.height - app.margin + 15, 
         text = "Press 'c' to castle.", 
@@ -1187,6 +1191,35 @@ def redrawAll(app, canvas): #visuals
             canvas.create_text(app.width//2, app.height/76, 
             text = 'Game Over!', font = ('Pursia', 12, 'bold italic'), 
                 fill = 'black')
+        #message for resigning
+        elif app.board.resign == True:
+            resignString = (str(app.board.currentPlayer)) + ' resigned.'
+            canvas.create_rectangle(app.margin+190, app.height//2-40, 
+               app.width-app.margin-190, app.height//2 , fill = 'black')
+            canvas.create_text(app.width//2, app.height/2 - 20, 
+            text = resignString.capitalize(), 
+            font = ('Pursia', 26, 'bold italic'), fill = 'white')
+            if app.board.currentPlayer == 'white':
+                canvas.create_rectangle(app.margin+190, app.height//2, 
+               app.width-app.margin-190, app.height//2 + 40, fill = 'black')
+                canvas.create_text(app.width//2, app.height//2 + 5, 
+                text = 'Black wins!', 
+                font = ('Pursia', 13, 'bold italic'), fill = 'white')
+                canvas.create_text(app.width//2, app.height//2 +25, 
+                text = 'Press space bar to start a new game', 
+                font = ('Pursia', 13, 'bold italic'), fill = 'white')
+            else:
+                canvas.create_rectangle(app.margin+190, app.height//2, 
+               app.width-app.margin-190, app.height//2 + 40, fill = 'black')
+                canvas.create_text(app.width//2, app.height//2 + 5, 
+                text = 'White wins!', 
+                font = ('Pursia', 13, 'bold italic'), fill = 'white')
+                canvas.create_text(app.width//2, app.height//2 +25, 
+                text = 'Press space bar to start a new game', 
+                font = ('Pursia', 13, 'bold italic'), fill = 'white')
+
+
+
 
 def startScreen_redrawAll(app, canvas):
     canvas.create_rectangle(0, 0, app.width, app.height, fill = 'tan')
@@ -1209,7 +1242,7 @@ def startScreen_redrawAll(app, canvas):
             text = 'Press 2 to play two-player mode',
             font = ('Pursia', 30, 'bold italic'), fill = 'black')
     canvas.create_text(app.width//2, app.height//2 + 80, 
-            text = 'Press 3 to play against smart AI',
+            text = 'Press 3 to play against smart AI ',
             font = ('Pursia', 30, 'bold italic'), fill = 'black')
 
 def keyPressed(app, event):
@@ -1251,6 +1284,9 @@ def keyPressed(app, event):
 
                 else: 
                     app.board.castlingValid = False
+        if (event.key == 'r' or event.key == 'R'):
+            app.board.resign = True
+        
 
 def playChess(): #start game
     runApp(width = 760, height = 760)
