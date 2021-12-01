@@ -7,7 +7,6 @@ import copy, random
 import cs112_f21_week10_linter
 from cmu_112_graphics import *
 from tkinter import *
-from tkinter.font import Font
 
 def appStarted(app): #initialize variables
     app.size = 0
@@ -77,13 +76,11 @@ class Board(object):
         self.wKingPos = (7, 4)
 
         #board states
-        self.check = False
+        self.bCheck = False
+        self.wCheck = False
         self.checkmate = False
         self.gameOver = False
         self.resign = False
-
-        #for check
-        self.onlyKingMoves = False
 
         #forcastling
         self.castlingValid = None
@@ -255,7 +252,16 @@ def isCheck(self, board):
     else:
         oppColor = 'white'
     kingPos = getKingPos(board, oppColor)
-    return self.isMoveValid(board, kingPos)
+    for row in board.board:
+        for piece in row:
+            if (piece == None):
+                continue
+            if (piece.color != self.color):
+                continue
+            if piece.isMoveValid(board, kingPos) == True:
+                return True
+    return False
+
 
 #looking for checkmate
 def isCheckMate(self, board):
@@ -551,12 +557,14 @@ def evaluatePosition(board):
     return score
 
 def tryCastling(app):
-    if app.board.check == True:
-        return False
     if app.board.currentPlayer == 'white':
+        if app.board.wCheck == True:
+            return False
         row = app.board.wKingPos[0]
         col = app.board.wKingPos[1]
     else:
+        if app.board.bCheck == True:
+            return False
         row = app.board.bKingPos[0]
         col = app.board.bKingPos[1]
     kingPiece = app.board.board[row][col]
@@ -647,7 +655,74 @@ def tryCastling(app):
         newPos[1] = 5 #new rook position
         rookTwo.moveTo(app.board, tuple(newPos), True)
         return True
+
+# helper for check
+def selfInCheck(self, board):
+    kingPos = getKingPos(board, self.color)
+    for row in board.board:
+        for piece in row:
+            if (piece == None):
+                continue
+            if (piece.color == self.color):
+                continue
+            if (piece.isMoveValid(board, kingPos) == True):
+                return True
+    return False
+
+
+def checkMoves(board, currPiece, newPos):
+    oldPos = currPiece.location
+    newBoard = copy.deepcopy(board)
+    #make move
+    newBoard.board[currPiece.location[0]][currPiece.location[1]] = None
+    position = list(currPiece.location)
+    position[0] = newPos[0]
+    position[1] = newPos[1]
+    currPiece.location = tuple(position)
+    newBoard.board[newPos[0]][newPos[1]] = currPiece
+    if selfInCheck(currPiece, newBoard) == True: #still in check
+        return False
+    else:
+        return True
+
+def writeLeaderboard(board):
+    if (board.currentPlayer == 'white'):
+        winner = "White"
+        moves = board.wMoves + 1
+    else:
+        winner = "Black"
+        moves = board.bMoves + 1
+
+    winString = winner + " : " + str(moves) + " Moves\n"
     
+    if os.path.isfile('leaderboard.txt') == False: #file doesn't exist
+        #file does not exist
+        myFile = open("leaderboard.txt", "a+")
+        myFile.writelines(winString)
+        myFile.close()
+        return
+    else: #file exists, need to insert in correct spot
+        myFile = open('leaderboard.txt', 'r+')
+        content = myFile.readlines()
+        index = 0
+        lineAdded = False
+        for line in content:
+            wordList = line.split(' ')
+            score = int(wordList[2])
+            if moves < score:
+                content.insert(index, winString)
+                lineAdded = True
+                break
+            else:
+                index += 1
+        if lineAdded == False: #reached end of file, score not added
+            content.append(winString)
+        
+        myFile.seek(0)
+        myFile.writelines(content)
+        myFile.close()
+
+
 
 #########################
 #MINIMAX
@@ -707,6 +782,9 @@ def makeBotMove(board):
     location, newPos = getPieceToMove(board, 'black')
     piece = board.board[location[0]][location[1]]
     piece.moveTo(board, newPos)
+    #if game over, add to leaderboard
+    if (board.gameOver == True):
+        writeLeaderboard(board)
 
 #computer move with minimax
 def makeBotMoveMiniMax(board):
@@ -721,6 +799,9 @@ def makeBotMoveMiniMax(board):
         piece = board.board[oldPos[0]][oldPos[1]]
     if (piece != None):
         piece.moveTo(board, newPos)
+    #if game over, add to leaderboard
+    if (board.gameOver == True):
+        writeLeaderboard(board)
 
 #########################
 #CLASSES
@@ -790,11 +871,20 @@ class Piece(object):
                 board.bKingPos = newPos
         
         #check?
-        board.check = isCheck(self, board)
-        if (board.check == True):
+        isCheckValid = isCheck(self, board)
+        if (isCheckValid == True):
+            if board.currentPlayer == 'white':
+                board.bCheck = True
+            else:
+                board.wCheck = True
             board.checkmate = isCheckMate(self, board)
             if (board.checkmate == True):
                 board.gameOver = True
+        else:
+            if self.color == 'white':
+                board.bCheck = False
+            else:
+                board.wCheck = False
         return True
     
     def __isMoveValid__(self, board, newPos):
@@ -805,7 +895,7 @@ class Piece(object):
         if ((newRow<0) or (newRow > board.rows-1) or (newCol < 0) 
             or (newCol > board.cols-1)):
             return False
-        
+
         #can move only if empty/capturing opponent
         if board.board[newRow][newCol] == None:
             return True
@@ -845,9 +935,6 @@ class Pawn(Piece):
 
     def isMoveValid(self, board, newPos):
         if (super().__isMoveValid__(board, newPos) == False):
-            return False
-        #only King can move when in check 
-        if board.check == True:
             return False
         #pawn can't capture directly in same column
         if (newPos[1] == self.location[1]):
@@ -927,9 +1014,6 @@ class Bishop(Piece):
     def isMoveValid(self, board, newPos):
         if (super().__isMoveValid__(board, newPos) == False):
             return False
-        #only King can move when in check 
-        if board.check == True:
-            return False
         return isBishopMoveValid(self, board, newPos)
     
     def getLegalMoves(self, board):
@@ -949,9 +1033,6 @@ class Knight(Piece):
 
     def isMoveValid(self, board, newPos):
         if (super().__isMoveValid__(board, newPos) == False):
-            return False
-        #only King can move when in check 
-        if board.check == True:
             return False
         validDirs = [(2,1), (1,2), (-2,1), (1, -2), (2, -1), (-1, 2), (-1, -2),\
             (-2,-1)]
@@ -997,9 +1078,6 @@ class Rook(Piece):
     def isMoveValid(self, board, newPos):
         if (super().__isMoveValid__(board, newPos) == False):
             return False
-        #only King can move when in check 
-        if board.check == True:
-            return False
         return isRookMoveValid(self, board, newPos)
 
     def getLegalMoves(self, board):
@@ -1019,9 +1097,6 @@ class Queen(Piece):
     
     def isMoveValid(self, board, newPos):
         if (super().__isMoveValid__(board, newPos) == False):
-            return False
-        #only King can move when in check 
-        if board.check == True:
             return False
         if ((isBishopMoveValid(self, board, newPos) == False) and 
         (isRookMoveValid(self, board, newPos) == False)):
@@ -1108,16 +1183,18 @@ def mousePressed(app, event):
             app.board.selectedPiece = selectedPiece
             app.board.legalMoves = selectedPiece.getLegalMoves(app.board)
             app.board.castlingValid = None
-        if (app.board.check == True and app.board.selectedPiece.name != 'King'):
-            app.board.onlyKingMoves = True
-        else:
-            app.board.onlyKingMoves = False
     elif (app.board.selectedPiece.location == position): #unselect a piece
         app.board.selectedPiece = None
     else:
         if (app.board.selectedPiece.moveTo(app.board, position) == True):
             app.board.selectedPiece = None
             app.board.legalMoves = []
+
+            #if game over, add to leaderboard
+            if (app.board.gameOver == True):
+                writeLeaderboard(app.board)
+                return
+
             if app.board.currentPlayer == 'white':
                 app.board.wMoves += 1
                 if (app.bot):
@@ -1162,13 +1239,6 @@ def redrawAll(app, canvas): #visuals
         canvas.create_text(app.width//2, app.height - app.margin + 15, 
         text = "Press 'c' to castle.", 
                 font = ('Pursia', 12, 'bold italic'), fill = 'black')  
-        #check error message
-        if app.board.onlyKingMoves == True:
-            canvas.create_rectangle(app.margin+20, app.height//2-20, 
-               app.width-app.margin-20, app.height//2 + 20, fill = 'black')
-            canvas.create_text(app.width//2, app.height/2, 
-            text = 'INVALID MOVE: In check, only King can move.', 
-                    font = ('Pursia', 26, 'bold italic'), fill = 'white')
         #castling error message
         if app.board.castlingValid == False:
             canvas.create_rectangle(app.margin+20, app.height//2-20, 
@@ -1182,7 +1252,8 @@ def redrawAll(app, canvas): #visuals
             text = 'Checkmate: Game Over!', font = ('Pursia', 12, 
                         'bold italic'), fill = 'black')
         #check message
-        elif app.board.check == True and app.board.gameOver == False:
+        elif ((app.board.bCheck == True and app.board.gameOver == False) or 
+        (app.board.wCheck == True and app.board.gameOver == False)):
             canvas.create_text(app.width//2, app.height/76, 
             text = 'Check!', font = ('Pursia', 12, 'bold italic'), 
                     fill = 'black')
@@ -1192,7 +1263,7 @@ def redrawAll(app, canvas): #visuals
             text = 'Game Over!', font = ('Pursia', 12, 'bold italic'), 
                 fill = 'black')
         #message for resigning
-        elif app.board.resign == True:
+        if app.board.resign == True:
             resignString = (str(app.board.currentPlayer)) + ' resigned.'
             canvas.create_rectangle(app.margin+190, app.height//2-40, 
                app.width-app.margin-190, app.height//2 , fill = 'black')
@@ -1217,9 +1288,8 @@ def redrawAll(app, canvas): #visuals
                 canvas.create_text(app.width//2, app.height//2 +25, 
                 text = 'Press space bar to start a new game', 
                 font = ('Pursia', 13, 'bold italic'), fill = 'white')
-
-
-
+        if app.board.gameOver == True:
+            leaderboardScreenDisplay(app, canvas)
 
 def startScreen_redrawAll(app, canvas):
     canvas.create_rectangle(0, 0, app.width, app.height, fill = 'tan')
@@ -1229,12 +1299,10 @@ def startScreen_redrawAll(app, canvas):
     canvas.create_image(app.width//2, app.height//2, 
                 image = ImageTk.PhotoImage(app.scaleImage(app.startFrame, 
                 1.25)))
-    
-    textFont1 = Font(family = 'Castletown', size = 30, weight = 'bold', 
-                slant = 'roman', underline = 1, overstrike = 0)
+
     canvas.create_text(app.width//2, app.height//2 - 20, 
             text = 'WELCOME TO CHECKMATE!',
-            font = textFont1, fill = 'maroon')
+            font = ('Pursia', 30, 'bold italic'), fill = 'maroon')
     canvas.create_text(app.width//2, app.height//2+20, 
             text = 'Press 1 to play against simple AI', 
             font = ('Pursia', 30, 'bold italic'), fill = 'black')
@@ -1244,6 +1312,31 @@ def startScreen_redrawAll(app, canvas):
     canvas.create_text(app.width//2, app.height//2 + 80, 
             text = 'Press 3 to play against smart AI ',
             font = ('Pursia', 30, 'bold italic'), fill = 'black')
+
+def leaderboardScreenDisplay(app, canvas):
+    myFile = open('leaderboard.txt', 'r')
+    contents = myFile.readlines()
+    myFile.close()
+
+    canvas.create_rectangle(app.margin, app.height//4, 
+    app.width-app.margin, app.height//2, fill = 'white')
+    canvas.create_text(app.width//2, 30+app.height//4, text = 'LEADERBOARD', 
+    font = 'Arial 24 bold')
+    
+    if not contents:
+        return
+    else:
+        index = 0
+        spacing = 80
+        for line in contents:
+            if (index > 4):
+                break
+            canvas.create_text(app.width//2, spacing + (app.height//4), 
+            text = line, font = 'Arial 18 bold')
+            
+            spacing += 20
+            index += 1
+            
 
 def keyPressed(app, event):
     if (app.inputNeeded == True):

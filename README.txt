@@ -8,7 +8,7 @@ to be manually moved by two players, or they can play against the Minimax
 computer, where the computer makes logically generated moves.   
 
 HOW TO RUN THE PROJECT:
-To run the project, open "term project (minimax version).py" in your editor.
+To run the project, open "chess_tp_minimax.py" in your editor.
 
 LIBRARIES NEEDED:
 pip, Pillow, cmu_112_graphics, copy, random
